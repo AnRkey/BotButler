@@ -100,4 +100,12 @@ function setupIpcHandlers() {
     }
     return false;
   });
+  
+  // Get current always-on-top state
+  ipcMain.handle('get-always-on-top', () => {
+    if (mainWindow) {
+      return mainWindow.isAlwaysOnTop();
+    }
+    return false;
+  });
 } 
