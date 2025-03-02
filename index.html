@@ -19,7 +19,23 @@
       height: 52px;
       background-color: #F9F8F6;
       display: flex;
+      flex-direction: row;
+    }
+
+    .site-buttons-container {
+      display: flex;
+      align-items: center;
+      padding: 0 5px;
+      height: 52px;
+      border-right: 1px solid #ddd;
+      min-width: fit-content;
+    }
+
+    .tabs-scroll-container {
+      display: flex;
       overflow-x: auto;
+      flex-grow: 1;
+      height: 52px;
     }
 
     .tabs {
@@ -89,19 +105,11 @@
       background-color: #ddd;
     }
 
-    .site-buttons-container {
-      display: flex;
-      align-items: flex-start;
-      border-right: 1px solid #ddd;
-      padding: 0 5px;
-    }
-
     .site-button {
       background: none;
       border: 1px solid #ccc;
       border-radius: 4px;
       margin: 0 3px;
-      margin-top: 5px;
       padding: 2px 8px;
       font-size: 12px;
       font-weight: bold;
@@ -139,14 +147,16 @@
     }
 
     .site-button.claude {
-      color: #7c3aed;
-      border-color: #7c3aed;
+      color: #C25000;
+      border-color: #C25000;
     }
 
     .app-controls {
       display: flex;
       align-items: center;
       padding: 0 5px;
+      height: 52px;
+      border-left: 1px solid #ddd;
     }
 
     .aot-button {
@@ -175,7 +185,7 @@
     }
 
     .views-container {
-      height: calc(100vh - 40px);
+      height: calc(100vh - 52px);
       width: 100%;
       position: relative;
     }
@@ -209,7 +219,9 @@
       <button class="site-button aistudio" id="aistudio-button">AI Studio</button>
       <button class="site-button claude" id="claude-button">Claude</button>
     </div>
-    <div class="tabs" id="tabs"></div>
+    <div class="tabs-scroll-container" id="tabs-scroll-container">
+      <div class="tabs" id="tabs"></div>
+    </div>
     <div class="app-controls">
       <button class="aot-button" id="aot-button">AOT</button>
     </div>
@@ -222,6 +234,7 @@
       tabs: [],
       activeTabId: null,
       tabsContainer: document.getElementById('tabs'),
+      tabsScrollContainer: document.getElementById('tabs-scroll-container'),
       viewsContainer: document.getElementById('views'),
       newTabButton: null,
       
