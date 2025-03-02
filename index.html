@@ -547,21 +547,64 @@
         viewElement.className = 'view';
         viewElement.id = 'view-' + tabId;
         
-        // Create a div for the welcome content
-        const welcomeDiv = document.createElement('div');
-        welcomeDiv.style.width = '100%';
-        welcomeDiv.style.height = '100%';
-        welcomeDiv.style.display = 'flex';
-        welcomeDiv.style.justifyContent = 'center';
-        welcomeDiv.style.alignItems = 'center';
-        welcomeDiv.style.backgroundColor = '#fff';
-        welcomeDiv.style.color = '#000';
-        welcomeDiv.style.fontSize = '32px';
-        welcomeDiv.style.fontWeight = 'bold';
-        welcomeDiv.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
-        welcomeDiv.textContent = 'Bot Butler v1.0.0';
+        // Create a container for the entire view content
+        const viewContainer = document.createElement('div');
+        viewContainer.style.width = '100%';
+        viewContainer.style.height = '100%';
+        viewContainer.style.position = 'relative';
+        viewContainer.style.backgroundColor = '#fff';
+        viewContainer.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
         
-        viewElement.appendChild(welcomeDiv);
+        // Create the instruction text container (positioned at the top)
+        const instructionContainer = document.createElement('div');
+        instructionContainer.style.width = '100%';
+        instructionContainer.style.padding = '15px 0 0 70px';
+        instructionContainer.style.position = 'absolute';
+        instructionContainer.style.top = '0';
+        instructionContainer.style.left = '0';
+        
+        // Create the instruction text
+        const instructionText = document.createElement('div');
+        instructionText.style.color = '#666';
+        instructionText.style.fontSize = '16px';
+        instructionText.textContent = 'Choose an AI to start a chat';
+        
+        // Add instruction text to its container
+        instructionContainer.appendChild(instructionText);
+        
+        // Create the version text container (centered in the page)
+        const versionContainer = document.createElement('div');
+        versionContainer.style.width = '100%';
+        versionContainer.style.height = '100%';
+        versionContainer.style.display = 'flex';
+        versionContainer.style.flexDirection = 'column';
+        versionContainer.style.justifyContent = 'center';
+        versionContainer.style.alignItems = 'center';
+        
+        // Create the Bot Butler version text
+        const versionText = document.createElement('div');
+        versionText.style.color = '#666';
+        versionText.style.fontSize = '24px';
+        versionText.style.fontWeight = 'bold';
+        versionText.textContent = 'Bot Butler v1.0.0a';
+        
+        // Create the tagline text
+        const taglineText = document.createElement('div');
+        taglineText.style.color = '#666';
+        taglineText.style.fontSize = '18px'; // 2 sizes smaller than the version text
+        taglineText.style.marginTop = '10px';
+        taglineText.textContent = 'AI chat service fit for a king';
+        
+        // Add version text and tagline to the container
+        versionContainer.appendChild(versionText);
+        versionContainer.appendChild(taglineText);
+        
+        // Add both containers to the view container
+        viewContainer.appendChild(instructionContainer);
+        viewContainer.appendChild(versionContainer);
+        
+        // Add the view container to the view element
+        viewElement.appendChild(viewContainer);
         
         // Add to DOM
         this.tabsContainer.appendChild(tabElement);
