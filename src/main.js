@@ -1,8 +1,8 @@
 const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
 const path = require('path');
 
-// Keep a global reference of the window object to prevent garbage collection
-let mainWindow;
+// Keep track of all window instances
+const windows = new Set();
 
 // Define the allowed URL patterns for internal handling
 const allowedUrlPatterns = [
@@ -22,7 +22,7 @@ const allowedUrlPatterns = [
 
 function createWindow() {
   // Create the browser window
-  mainWindow = new BrowserWindow({
+  const newWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
@@ -33,25 +33,31 @@ function createWindow() {
     icon: path.join(__dirname, 'botbutler.png')
   });
 
+  // Add to our windows set
+  windows.add(newWindow);
+
   // Disable the menu bar
   Menu.setApplicationMenu(null);
 
   // Load the index.html file
-  mainWindow.loadFile(path.join(__dirname, '../index.html'));
+  newWindow.loadFile(path.join(__dirname, '../index.html'));
 
   // Open DevTools in development mode
-  // mainWindow.webContents.openDevTools();
+  // newWindow.webContents.openDevTools();
 
   // Handle window closed event
-  mainWindow.on('closed', () => {
-    mainWindow = null;
+  newWindow.on('closed', () => {
+    // Remove from our set of windows when closed
+    windows.delete(newWindow);
   });
 
-  // Set up URL handling
-  setupUrlHandling();
+  // Set up URL handling for this window
+  setupUrlHandling(newWindow);
 
-  // Set up IPC handlers
-  setupIpcHandlers();
+  // Set up IPC handlers specific to this window
+  setupIpcHandlersForWindow(newWindow);
+  
+  return newWindow;
 }
 
 // Create window when Electron has finished initialization
@@ -60,7 +66,7 @@ app.whenReady().then(() => {
 
   app.on('activate', () => {
     // On macOS, re-create a window when the dock icon is clicked and no windows are open
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (windows.size === 0) createWindow();
   });
 });
 
@@ -70,42 +76,73 @@ app.on('window-all-closed', () => {
 });
 
 // Handle URL navigation and determine if URLs should be opened internally
-function setupUrlHandling() {
+function setupUrlHandling(window) {
   // Handle navigation events from webContents
-  app.on('web-contents-created', (event, contents) => {
-    // Handle new window creation
-    contents.setWindowOpenHandler(({ url }) => {
-      const shouldHandleInternally = allowedUrlPatterns.some(pattern => pattern.test(url));
-      
-      if (shouldHandleInternally) {
-        // Allow creating a new tab/window within the app
-        return { action: 'allow' };
-      } else {
-        // Open in external browser
-        shell.openExternal(url);
-        return { action: 'deny' };
-      }
-    });
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    const shouldHandleInternally = allowedUrlPatterns.some(pattern => pattern.test(url));
+    
+    if (shouldHandleInternally) {
+      // Allow creating a new tab/window within the app
+      return { action: 'allow' };
+    } else {
+      // Open in external browser
+      shell.openExternal(url);
+      return { action: 'deny' };
+    }
   });
 }
 
-// Set up IPC handlers for renderer-to-main process communication
-function setupIpcHandlers() {
-  // Handle always-on-top toggle
-  ipcMain.handle('toggle-always-on-top', () => {
-    if (mainWindow) {
-      const isAlwaysOnTop = mainWindow.isAlwaysOnTop();
-      mainWindow.setAlwaysOnTop(!isAlwaysOnTop);
+// Set up global IPC handlers
+function setupGlobalIpcHandlers() {
+  // Create a new application window
+  ipcMain.on('create-new-window', () => {
+    createWindow();
+  });
+}
+
+// Set up IPC handlers specific to a window instance
+function setupIpcHandlersForWindow(window) {
+  // Generate a unique ID for this window
+  const windowId = Date.now().toString();
+  
+  // Store the window ID in the window object for reference
+  window.windowId = windowId;
+  
+  // Handle always-on-top toggle for this specific window
+  const toggleHandler = (event) => {
+    // Only process if the event came from this window
+    if (event.sender === window.webContents) {
+      const isAlwaysOnTop = window.isAlwaysOnTop();
+      window.setAlwaysOnTop(!isAlwaysOnTop);
       return !isAlwaysOnTop;
     }
     return false;
-  });
+  };
   
-  // Get current always-on-top state
-  ipcMain.handle('get-always-on-top', () => {
-    if (mainWindow) {
-      return mainWindow.isAlwaysOnTop();
+  // Get current always-on-top state for this specific window
+  const getStateHandler = (event) => {
+    // Only process if the event came from this window
+    if (event.sender === window.webContents) {
+      return window.isAlwaysOnTop();
     }
     return false;
+  };
+  
+  // Register handlers for this window
+  window.toggleHandlerId = ipcMain.handle(`toggle-always-on-top-${windowId}`, toggleHandler);
+  window.getStateHandlerId = ipcMain.handle(`get-always-on-top-${windowId}`, getStateHandler);
+  
+  // When window is closed, remove the handlers
+  window.on('closed', () => {
+    ipcMain.removeHandler(`toggle-always-on-top-${windowId}`);
+    ipcMain.removeHandler(`get-always-on-top-${windowId}`);
   });
-} 
+  
+  // Send the window ID to the renderer process
+  window.webContents.on('did-finish-load', () => {
+    window.webContents.send('set-window-id', windowId);
+  });
+}
+
+// Set up the global IPC handlers
+setupGlobalIpcHandlers(); 

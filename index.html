@@ -90,19 +90,24 @@
 
     .new-tab-button {
       background: none;
-      border: none;
-      font-size: 20px;
+      border: 1px solid #cc0000;
+      border-radius: 4px;
+      margin: 0 5px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: bold;
       cursor: pointer;
-      width: 30px;
-      height: 40px;
+      height: 28px;
+      white-space: nowrap;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-left: 5px;
+      transition: all 0.2s ease;
+      color: #cc0000;
     }
 
     .new-tab-button:hover {
-      background-color: #ddd;
+      background-color: rgba(204, 0, 0, 0.1);
     }
 
     .site-button {
@@ -132,18 +137,18 @@
     }
 
     .site-button.chatgpt {
-      color: #10a37f;
-      border-color: #10a37f;
+      color: #333;
+      border-color: #333;
     }
 
     .site-button.gemini {
-      color: #8e44ad;
-      border-color: #8e44ad;
+      color: #0066cc;
+      border-color: #0066cc;
     }
 
     .site-button.aistudio {
-      color: #4285f4;
-      border-color: #4285f4;
+      color: #003366;
+      border-color: #003366;
     }
 
     .site-button.claude {
@@ -220,7 +225,7 @@
     .aot-label {
       font-weight: bold;
       color: #666;
-      font-size: 8px;
+      font-size: 9px;
       margin-bottom: 2px;
     }
 
@@ -267,6 +272,7 @@
       <div class="tabs" id="tabs"></div>
     </div>
     <div class="app-controls">
+      <button class="new-tab-button" id="new-window-button">+ Instance</button>
       <label class="aot-button" id="aot-button">
         <span class="aot-label">Always on top</span>
         <div class="aot-switch">
@@ -279,14 +285,17 @@
   <div class="views-container" id="views"></div>
 
   <script>
+    // Store the window ID received from the main process
+    let windowId = null;
+    
     // Simple tab management
     const tabManager = {
       tabs: [],
       activeTabId: null,
+      starterTabId: null,
       tabsContainer: document.getElementById('tabs'),
       tabsScrollContainer: document.getElementById('tabs-scroll-container'),
       viewsContainer: document.getElementById('views'),
-      newTabButton: null,
       
       // Define site URLs
       sites: {
@@ -298,77 +307,82 @@
       },
       
       init() {
+        // Set up IPC communication
+        const { ipcRenderer } = require('electron');
+        
+        // Listen for the window ID from the main process
+        ipcRenderer.on('set-window-id', (event, id) => {
+          windowId = id;
+          this.setupAOTButton();
+        });
+        
         // Set up site buttons
         this.setupSiteButtons();
         
-        // Create the new tab button
-        this.createNewTabButton();
+        // Set up new window button
+        const newWindowButton = document.getElementById('new-window-button');
+        newWindowButton.addEventListener('click', () => {
+          ipcRenderer.send('create-new-window');
+        });
         
-        // Set up AOT button
+        // Create initial blank tab instead of Grok
+        this.createBlankTab();
+      },
+      
+      setupAOTButton() {
+        if (!windowId) return; // Wait for window ID
+        
+        const { ipcRenderer } = require('electron');
         const aotButton = document.getElementById('aot-button');
         const aotCheckbox = document.getElementById('aot-checkbox');
         
-        // Check initial state
-        const { ipcRenderer } = require('electron');
-        ipcRenderer.invoke('get-always-on-top').then((isAlwaysOnTop) => {
+        // Check initial state using window-specific channel
+        ipcRenderer.invoke(`get-always-on-top-${windowId}`).then((isAlwaysOnTop) => {
           aotCheckbox.checked = isAlwaysOnTop;
         });
         
-        // Add click handler to the checkbox directly
+        // Add click handler to the checkbox using window-specific channel
         aotCheckbox.addEventListener('change', () => {
-          ipcRenderer.invoke('toggle-always-on-top').then((isAlwaysOnTop) => {
+          ipcRenderer.invoke(`toggle-always-on-top-${windowId}`).then((isAlwaysOnTop) => {
             aotCheckbox.checked = isAlwaysOnTop;
           });
         });
-        
-        // Create initial tab
-        this.createTab(this.sites.grok);
       },
       
       setupSiteButtons() {
         // Set up click handlers for site buttons
         document.getElementById('grok-button').addEventListener('click', () => {
-          this.createTab(this.sites.grok);
+          this.createServiceTab(this.sites.grok);
         });
         
         document.getElementById('chatgpt-button').addEventListener('click', () => {
-          this.createTab(this.sites.chatgpt);
+          this.createServiceTab(this.sites.chatgpt);
         });
         
         document.getElementById('gemini-button').addEventListener('click', () => {
-          this.createTab(this.sites.gemini);
+          this.createServiceTab(this.sites.gemini);
         });
         
         document.getElementById('aistudio-button').addEventListener('click', () => {
-          this.createTab(this.sites.aistudio);
+          this.createServiceTab(this.sites.aistudio);
         });
         
         document.getElementById('claude-button').addEventListener('click', () => {
-          this.createTab(this.sites.claude);
+          this.createServiceTab(this.sites.claude);
         });
       },
       
-      createNewTabButton() {
-        // Create the new tab button if it doesn't exist
-        if (!this.newTabButton) {
-          this.newTabButton = document.createElement('button');
-          this.newTabButton.className = 'new-tab-button';
-          this.newTabButton.textContent = '+';
-          this.newTabButton.addEventListener('click', () => {
-            this.createTab(this.sites.grok);
-          });
+      createServiceTab(url) {
+        // Create the new service tab
+        const newTabId = this.createTab(url);
+        
+        // Close the starter tab if it exists
+        if (this.starterTabId) {
+          this.closeTab(this.starterTabId);
+          this.starterTabId = null;
         }
         
-        // Add it to the tabs container
-        this.tabsContainer.appendChild(this.newTabButton);
-      },
-      
-      updateNewTabButtonPosition() {
-        // Move the new tab button to the end of the tabs list
-        if (this.newTabButton && this.newTabButton.parentNode) {
-          this.newTabButton.parentNode.removeChild(this.newTabButton);
-        }
-        this.tabsContainer.appendChild(this.newTabButton);
+        return newTabId;
       },
       
       createTab(url) {
@@ -394,12 +408,9 @@
         
         viewElement.appendChild(webview);
         
-        // Add to DOM - insert before the new tab button
+        // Add to DOM
         this.tabsContainer.appendChild(tabElement);
         this.viewsContainer.appendChild(viewElement);
-        
-        // Update the new tab button position
-        this.updateNewTabButtonPosition();
         
         // Set up event listeners
         tabElement.addEventListener('click', (e) => {
@@ -506,14 +517,82 @@
             }
           }
           
-          // If no tabs left, create a new one
+          // If this was the starter tab, clear the starter tab ID
+          if (this.starterTabId === tabId) {
+            this.starterTabId = null;
+          }
+          
+          // If no tabs left, create a new blank tab instead of Grok
           if (this.tabs.length === 0) {
-            this.createTab(this.sites.grok);
-          } else {
-            // Update the new tab button position
-            this.updateNewTabButtonPosition();
+            this.createBlankTab();
           }
         }
+      },
+      
+      // New function to create a blank tab with Bot Butler text
+      createBlankTab() {
+        const tabId = 'tab-' + Date.now();
+        
+        // Create tab element
+        const tabElement = document.createElement('div');
+        tabElement.className = 'tab';
+        tabElement.id = tabId;
+        tabElement.innerHTML = `
+          <div class="tab-title">Bot Butler</div>
+          <button class="tab-close">×</button>
+        `;
+        
+        // Create view element with custom content
+        const viewElement = document.createElement('div');
+        viewElement.className = 'view';
+        viewElement.id = 'view-' + tabId;
+        
+        // Create a div for the welcome content
+        const welcomeDiv = document.createElement('div');
+        welcomeDiv.style.width = '100%';
+        welcomeDiv.style.height = '100%';
+        welcomeDiv.style.display = 'flex';
+        welcomeDiv.style.justifyContent = 'center';
+        welcomeDiv.style.alignItems = 'center';
+        welcomeDiv.style.backgroundColor = '#fff';
+        welcomeDiv.style.color = '#000';
+        welcomeDiv.style.fontSize = '32px';
+        welcomeDiv.style.fontWeight = 'bold';
+        welcomeDiv.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+        welcomeDiv.textContent = 'Bot Butler v1.0.0';
+        
+        viewElement.appendChild(welcomeDiv);
+        
+        // Add to DOM
+        this.tabsContainer.appendChild(tabElement);
+        this.viewsContainer.appendChild(viewElement);
+        
+        // Set up event listeners
+        tabElement.addEventListener('click', (e) => {
+          if (!e.target.classList.contains('tab-close')) {
+            this.activateTab(tabId);
+          }
+        });
+        
+        tabElement.querySelector('.tab-close').addEventListener('click', () => {
+          this.closeTab(tabId);
+          this.starterTabId = null;
+        });
+        
+        // Store tab info
+        this.tabs.push({
+          id: tabId,
+          element: tabElement,
+          view: viewElement
+        });
+        
+        // Activate the new tab
+        this.activateTab(tabId);
+        
+        // Store this as the starter tab
+        this.starterTabId = tabId;
+        
+        return tabId;
       }
     };
     
