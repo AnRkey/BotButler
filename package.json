@@ -59,10 +59,10 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "BotButler",
-      "artifactName": "BotButler_Installer-v${version}.exe"
+      "artifactName": "BotButler_Installer-v1.0.0a.exe"
     },
     "portable": {
-      "artifactName": "BotButler_Portable-v${version}.exe"
+      "artifactName": "BotButler_Portable-v1.0.0a.exe"
     },
     "asar": true,
     "asarUnpack": [],
