@@ -1,6 +1,5 @@
 # BotButler v.1.0.0a
 
-botbutler.png
 ![Screenshot](src/botbutler.png)
 
 ## Description
